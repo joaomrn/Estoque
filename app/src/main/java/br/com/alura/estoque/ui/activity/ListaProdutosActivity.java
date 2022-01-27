@@ -6,11 +6,13 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
+
 import br.com.alura.estoque.R;
 import br.com.alura.estoque.asynctask.BaseAsyncTask;
 import br.com.alura.estoque.database.EstoqueDatabase;
 import br.com.alura.estoque.database.dao.ProdutoDAO;
 import br.com.alura.estoque.model.Produto;
+import br.com.alura.estoque.repository.ProdutoRepository;
 import br.com.alura.estoque.ui.dialog.EditaProdutoDialog;
 import br.com.alura.estoque.ui.dialog.SalvaProdutoDialog;
 import br.com.alura.estoque.ui.recyclerview.adapter.ListaProdutosAdapter;
@@ -20,6 +22,7 @@ public class ListaProdutosActivity extends AppCompatActivity {
     private static final String TITULO_APPBAR = "Lista de produtos";
     private ListaProdutosAdapter adapter;
     private ProdutoDAO dao;
+    private ProdutoRepository repository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,13 +36,8 @@ public class ListaProdutosActivity extends AppCompatActivity {
         EstoqueDatabase db = EstoqueDatabase.getInstance(this);
         dao = db.getProdutoDAO();
 
-        buscaProdutos();
-    }
-
-    private void buscaProdutos() {
-        new BaseAsyncTask<>(dao::buscaTodos,
-                resultado -> adapter.atualiza(resultado))
-                .execute();
+        repository = new ProdutoRepository(dao);
+        repository.buscaProdutos(adapter::atualiza);
     }
 
     private void configuraListaProdutos() {
@@ -64,16 +62,9 @@ public class ListaProdutosActivity extends AppCompatActivity {
     }
 
     private void abreFormularioSalvaProduto() {
-        new SalvaProdutoDialog(this, this::salva).mostra();
-    }
-
-    private void salva(Produto produto) {
-        new BaseAsyncTask<>(() -> {
-            long id = dao.salva(produto);
-            return dao.buscaProduto(id);
-        }, produtoSalvo ->
-                adapter.adiciona(produtoSalvo))
-                .execute();
+        new SalvaProdutoDialog(this, produtoCriado ->
+                repository.salva(produtoCriado, adapter::adiciona))
+                .mostra();
     }
 
     private void abreFormularioEditaProduto(int posicao, Produto produto) {
@@ -90,6 +81,4 @@ public class ListaProdutosActivity extends AppCompatActivity {
                 adapter.edita(posicao, produtoEditado))
                 .execute();
     }
-
-
 }
